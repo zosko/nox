@@ -50,7 +50,9 @@ boot:
 	mov bh, 0						; I cant say i know what this does, but im scared to remove it
 
 .loop:
-	lodsb 							; Move to the next location in memory
+	lodsb 							;Load a byte of the message into AL.
+                         					;Remember that DS is 0 and SI holds the
+                         					;offset of one of the bytes of the message.
 	cmp al, 0 						; Have we made it to the null terminator?
 	je .done						; If so, we are done
 	int 0x10						; BIOS video service
@@ -65,7 +67,7 @@ bootmsg:
 	db "floppy booted", 0			; Dont forget null terminators!
 
 times 510 - ($-$$) db 0				; Fill the sector except for the actual code with zeros
-dw 0xAA55							; Tell the BIOS that this is bootable
+dw 0xAA55							; Boot sector signature
 
 ; This is outside of the boot sector. Alltough much of the boot sector is zeros, it is always same size and bugs can happen if you go over
 ; the designated size. Just put most of your stuff out here. It will most likly load.
