@@ -19,16 +19,16 @@
 ; qemu-system-i386 -fda floppy.img
 ;
 
-BITS 				16						; Tell NASM that this is a 16bit program
-ORG 				0x7c00					; Start at memory address 0x7c00 is where BIOS loads the bootloader into memory
-row_cursor:			db 0
-clumn_cursor:		db 0
+bits 				16					; Tell NASM that this is a 16bit program
+org 				0x7c00					; Start at memory address 0x7c00 is where BIOS loads the bootloader into memory
+x_cursor:			db 0
+y_cursor:			db 0
 
 genesis:
 	mov ax, 0x0003							; BIOS.SetVideoMode 80x25 16-color text
 	int 0x10
 
-	mov bx, 0x0022							; predefined color green for background and foreground
+	call color_red
 
 loop:
 	call read_key
@@ -45,13 +45,13 @@ loop:
 	je move_right
 
 	cmp al, 0x31							; 1 key
-	je choose_color_red
+	je color_red
 
 	cmp al, 0x32							; 2 key
-	je choose_color_green
+	je color_green
 
 	cmp al, 0x33							; 3 key
-	je choose_color_blue
+	je color_blue
 
 	cmp al, 0x20							; SPACE key
 	je draw
@@ -62,6 +62,11 @@ display_char:								; display char that is on AL
 	mov ah, 0x0e
 	mov bx, 0x000f
 	int 0x10
+
+	mov ax, 0x0003							; BIOS.SetVideoMode 80x25 16-color text
+	int 0x10
+
+	jmp loop
 	ret
 
 read_key:
@@ -69,17 +74,17 @@ read_key:
 	int 0x16
 	ret
 
-choose_color_red:
-	mov bx, 0x00CC							; red for background and foreground
+color_red:
+	mov bx, 0x00cc							; red for background and foreground
 	jmp loop
 	ret
 
-choose_color_green:
+color_green:
 	mov bx, 0x0022							; green for background and foreground
 	jmp loop
 	ret
 
-choose_color_blue:
+color_blue:
 	mov bx, 0x0099							; blue for background and foreground
 	jmp loop
 	ret
@@ -94,8 +99,8 @@ draw:
 	ret
 
 move_left:
-	mov al, [clumn_cursor]
-	cmp al, 0 								; check if position is > 0
+	mov al, [y_cursor]
+	cmp al, 0 							; check if position is > 0
 	jnle .continue							; go left with decrease value in cursor
 
 	call loop
@@ -103,13 +108,13 @@ move_left:
 
 	.continue:
 		dec al
-		mov [clumn_cursor], al
+		mov [y_cursor], al
 		call move_cursor
 		ret
 
 move_right:
-	mov al, [clumn_cursor]
-	cmp al, 79								; check if position is > 79
+	mov al, [y_cursor]
+	cmp al, 79							; check if position is > 79
 	jl .continue	 						; go right with increasing value in cursor
 
 	call loop
@@ -117,13 +122,13 @@ move_right:
 
 	.continue:
 		inc al
-		mov [clumn_cursor], al
+		mov [y_cursor], al
 		call move_cursor
 		ret
 
 move_down:
-	mov al, [row_cursor]
-	cmp al, 24								; check if position is > 24
+	mov al, [x_cursor]
+	cmp al, 24							; check if position is > 24
 	jl .continue 							; go down with increasing value in cursor
 
 	call loop
@@ -131,13 +136,13 @@ move_down:
 
 	.continue:
 		inc al
-		mov [row_cursor], al
+		mov [x_cursor], al
 		call move_cursor
 		ret
 
 move_up:
-	mov al, [row_cursor]
-	cmp al, 0 								; check if position is > 0
+	mov al, [x_cursor]
+	cmp al, 0 							; check if position is > 0
 	jnle .continue 							; go up with decrease value in cursor
 
 	call loop
@@ -145,14 +150,14 @@ move_up:
 
 	.continue:
 		dec al
-		mov [row_cursor], al
+		mov [x_cursor], al
 		call move_cursor
 		ret
 	
 
 move_cursor:
-	mov dh, [row_cursor]					; Row
-	mov dl, [clumn_cursor]					; Column
+	mov dh, [x_cursor]						; Row
+	mov dl, [y_cursor]						; Column
 	mov bh, 0x00							; DisplayPage
 	mov ah, 0x02							; BIOS.SetCursorPosition
 	int 0x10
@@ -161,7 +166,7 @@ move_cursor:
 	ret
 
 done:
-	jmp $									; This is an infinite loop
+	jmp $								; This is an infinite loop
 
-times 510 - ($-$$) db 0						; Fill the sector except for the actual code with zeros
-dw 0xAA55									; Boot sector signature
+times 510 - ($-$$) db 0							; Fill the sector except for the actual code with zeros
+dw 0xAA55								; Boot sector signature
